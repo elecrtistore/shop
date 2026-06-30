@@ -6,6 +6,8 @@ function LoginPage() {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [adminMode, setAdminMode] = useState(false);
+  const [adminCode, setAdminCode] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -15,7 +17,7 @@ function LoginPage() {
     setError('');
     setSubmitting(true);
     try {
-      await login(email, password);
+      await login(email, password, adminMode ? adminCode : undefined);
       navigate('/shop');
     } catch (err: any) {
       const message =
@@ -63,6 +65,24 @@ function LoginPage() {
                 className="mt-2 w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-charcoal outline-none focus:border-primary"
               />
             </label>
+
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="admin-toggle" checked={adminMode} onChange={(e) => setAdminMode(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-primary" />
+              <label htmlFor="admin-toggle" className="text-sm text-slate-600">Sign in as admin</label>
+            </div>
+
+            {adminMode && (
+              <label className="block">
+                <span className="text-sm font-medium text-slate-700">Admin code</span>
+                <input
+                  type="password"
+                  value={adminCode}
+                  onChange={(e) => setAdminCode(e.target.value)}
+                  required
+                  className="mt-2 w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-charcoal outline-none focus:border-primary"
+                />
+              </label>
+            )}
 
             <button
               type="submit"

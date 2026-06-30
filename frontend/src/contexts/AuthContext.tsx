@@ -14,7 +14,7 @@ interface AuthContextValue {
   user: UserProfile | null;
   firebaseUser: FirebaseUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, adminCode?: string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
   signupWithRole: (email: string, password: string, role: string, adminCode?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -88,8 +88,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, adminCode?: string) => {
     await signInWithEmailAndPassword(auth, email, password);
+    if (adminCode) {
+      const fbUser = auth.currentUser;
+      if (fbUser) {
+        storeRole('Admin');
+        setUser(buildFallbackProfile(fbUser, 'Admin'));
+      }
+    }
   };
 
   const signup = async (email: string, password: string) => {
