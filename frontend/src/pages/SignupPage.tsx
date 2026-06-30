@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { UserPlus, Mail, Lock, User, Shield } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, Shield, ChevronDown, Eye, EyeOff } from 'lucide-react';
 
 function SignupPage() {
   const { signupWithRole } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ displayName: '', email: '', password: '', role: 'Buyer' as 'Buyer' | 'Admin', adminCode: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -55,18 +56,24 @@ function SignupPage() {
             <label className="text-sm font-medium text-charcoal">Password</label>
             <div className="relative mt-2">
               <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-soft" />
-              <input type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} required
-                className="w-full rounded-xl border border-border bg-white pl-10 pr-4 py-3 text-sm outline-none focus:border-primary transition" />
+              <input type={showPassword ? 'text' : 'password'} value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} required
+                className="w-full rounded-xl border border-border bg-white pl-10 pr-10 py-3 text-sm outline-none focus:border-primary transition" />
+              <button type="button" onClick={() => setShowPassword((p) => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-soft hover:text-charcoal transition">
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 
           <div>
             <label className="text-sm font-medium text-charcoal">Role</label>
-            <select value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value as 'Buyer' | 'Admin' }))}
-              className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm outline-none focus:border-primary transition mt-2">
-              <option value="Buyer">Buyer</option>
-              <option value="Admin">Admin</option>
-            </select>
+            <div className="relative mt-2">
+              <select value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value as 'Buyer' | 'Admin' }))}
+                className="w-full appearance-none cursor-pointer rounded-xl border border-border bg-white px-4 py-3 pr-10 text-sm outline-none transition focus:border-primary">
+                <option value="Buyer">Buyer</option>
+                <option value="Admin">Admin</option>
+              </select>
+              <ChevronDown size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-soft" />
+            </div>
           </div>
 
           {form.role === 'Admin' && (

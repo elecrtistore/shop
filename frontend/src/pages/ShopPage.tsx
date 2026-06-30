@@ -5,7 +5,7 @@ import { useInquiry } from '../contexts/InquiryContext';
 import { Product } from '../types/product';
 import { fetchProducts, updateProduct } from '../services/productService';
 import api from '../services/api';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
 import DiscountModal from '../components/DiscountModal';
 
 interface HeroContent { title: string; subtitle: string; body: string; sections: { heading: string; content: string }[]; }
@@ -19,6 +19,7 @@ function ShopPage() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState(searchParams.get('category') || 'All');
   const [sort, setSort] = useState('Newest');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 500000]);
   const [draggedProductId, setDraggedProductId] = useState<string | null>(null);
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
@@ -91,34 +92,44 @@ function ShopPage() {
 
       <div className="mx-auto max-w-7xl px-6 py-10">
         <div className="grid lg:grid-cols-[260px_1fr] gap-10">
-          {/* ─── FILTERS ─── */}
-          <aside className="space-y-8">
-            <div>
-              <div className="relative">
-                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-soft" />
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search products..." className="w-full rounded-full border border-border bg-white pl-10 pr-4 py-2.5 text-sm outline-none focus:border-primary transition" />
+          {/* ─── MOBILE FILTER TOGGLE ─── */}
+          <div className="lg:hidden">
+            <button onClick={() => setFiltersOpen(!filtersOpen)} className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-charcoal hover:bg-slate-50 transition">
+              <SlidersHorizontal size={16} />
+              {filtersOpen ? 'Hide filters' : 'Filter & sort'}
+              <ChevronDown size={14} className={`transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {filtersOpen && (
+              <div className="mt-4 space-y-6">
+                <div className="relative">
+                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-soft" />
+                  <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search products..." className="w-full rounded-full border border-border bg-white pl-10 pr-4 py-2.5 text-sm outline-none focus:border-primary transition" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-charcoal mb-3">Category</h4>
+                  <div className="space-y-1">
+                    {categories.map((cat) => (
+                      <button key={cat} onClick={() => setCategory(cat)} className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition ${category === cat ? 'bg-primary/10 text-primary font-semibold' : 'text-soft hover:text-charcoal'}`}>
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-charcoal mb-3">Sort</h4>
+                  <div className="relative">
+                    <select value={sort} onChange={(e) => setSort(e.target.value)} className="w-full appearance-none cursor-pointer rounded-lg border border-border bg-white px-3 py-2.5 pr-10 text-sm outline-none transition focus:border-primary">
+                      <option value="Newest">Newest</option>
+                      <option value="Lowest">Lowest Price</option>
+                      <option value="Highest">Highest Price</option>
+                      {isAdmin && <option value="Custom">Custom order</option>}
+                    </select>
+                    <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-soft" />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-charcoal mb-3">Category</h4>
-              <div className="space-y-1">
-                {categories.map((cat) => (
-                  <button key={cat} onClick={() => setCategory(cat)} className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition ${category === cat ? 'bg-primary/10 text-primary font-semibold' : 'text-soft hover:text-charcoal'}`}>
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-charcoal mb-3">Sort</h4>
-              <select value={sort} onChange={(e) => setSort(e.target.value)} className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm outline-none focus:border-primary transition">
-                <option value="Newest">Newest</option>
-                <option value="Lowest">Lowest Price</option>
-                <option value="Highest">Highest Price</option>
-                {isAdmin && <option value="Custom">Custom order</option>}
-              </select>
-            </div>
-          </aside>
+            )}
+          </div>
 
           {/* ─── PRODUCTS ─── */}
           <div>
@@ -162,7 +173,7 @@ function ShopPage() {
                       ) : (
                         <span className="inline-block rounded-full bg-slate-100 px-3 py-0.5 text-xs font-medium text-soft">{product.stock > 0 ? 'In stock' : 'Out of stock'}</span>
                       )}
-                      <div className="pt-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="pt-3 flex gap-2">
                         {isAdmin && (
                           <>
                             {editingPriceId === product._id ? (
@@ -192,6 +203,38 @@ function ShopPage() {
               </div>
             )}
           </div>
+
+          {/* ─── DESKTOP FILTERS ─── */}
+          <aside className="hidden lg:block space-y-8">
+            <div>
+              <div className="relative">
+                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-soft" />
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search products..." className="w-full rounded-full border border-border bg-white pl-10 pr-4 py-2.5 text-sm outline-none focus:border-primary transition" />
+              </div>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-charcoal mb-3">Category</h4>
+              <div className="space-y-1">
+                {categories.map((cat) => (
+                  <button key={cat} onClick={() => setCategory(cat)} className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition ${category === cat ? 'bg-primary/10 text-primary font-semibold' : 'text-soft hover:text-charcoal'}`}>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-charcoal mb-3">Sort</h4>
+              <div className="relative">
+                <select value={sort} onChange={(e) => setSort(e.target.value)} className="w-full appearance-none cursor-pointer rounded-lg border border-border bg-white px-3 py-2.5 pr-10 text-sm outline-none transition focus:border-primary">
+                  <option value="Newest">Newest</option>
+                  <option value="Lowest">Lowest Price</option>
+                  <option value="Highest">Highest Price</option>
+                  {isAdmin && <option value="Custom">Custom order</option>}
+                </select>
+                <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-soft" />
+              </div>
+            </div>
+          </aside>
         </div>
       </div>
       <DiscountModal open={discountModalOpen} initial={10} onClose={() => { setDiscountModalOpen(false); setDiscountTargetId(null); }} onApply={handleApplyDiscount} />

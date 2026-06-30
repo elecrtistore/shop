@@ -138,7 +138,7 @@ function HomePage() {
                     {product.discount && (
                       <span className="inline-block rounded-full bg-emerald-50 px-3 py-0.5 text-xs font-semibold text-emerald-600">{product.discount}% OFF</span>
                     )}
-                    <div className="pt-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="pt-3 flex gap-2">
                       <span className="flex-1 rounded-full bg-primary text-center text-sm font-semibold text-white py-2">View details</span>
                     </div>
                   </div>

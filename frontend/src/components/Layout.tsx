@@ -53,8 +53,8 @@ function Layout({ children }: { children: React.ReactNode }) {
         transparent ? 'bg-transparent' : 'bg-white/90 backdrop-blur-md shadow-sm'
       }`}>
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link to="/" className={`text-xl font-bold tracking-tight transition-colors ${transparent ? 'text-white' : 'text-charcoal'}`}>
-            {shopName}
+          <Link to="/" className="flex items-center gap-2">
+            <img src="/logo.png" alt={shopName} className="h-8 w-auto" />
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">
@@ -65,8 +65,8 @@ function Layout({ children }: { children: React.ReactNode }) {
                 className={({ isActive }) =>
                   `text-sm font-medium transition-colors relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:bg-primary after:transition-all after:duration-300 ${
                     isActive
-                      ? `${transparent ? 'text-white' : 'text-charcoal'} after:w-full`
-                      : `${transparent ? 'text-white/80 hover:text-white' : 'text-soft hover:text-charcoal'} after:w-0`
+                      ? 'text-charcoal after:w-full'
+                      : 'text-soft hover:text-charcoal after:w-0'
                   }`
                 }
               >
@@ -78,7 +78,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-4">
             {user ? (
               <div className="flex items-center gap-3">
-                <span className={`hidden sm:block text-sm font-medium ${transparent ? 'text-white/80' : 'text-soft'}`}>
+                <span className="hidden sm:block text-sm font-medium text-soft">
                   {user.displayName || user.email}
                 </span>
                 <button onClick={logout} className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white hover:bg-primary-hover transition">
@@ -90,7 +90,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 Sign in
               </Link>
             )}
-            <button onClick={() => setOpen(!open)} className={`md:hidden p-2 rounded-full transition ${transparent ? 'text-white' : 'text-charcoal'}`}>
+            <button onClick={() => setOpen(!open)} className="md:hidden p-2 rounded-full text-charcoal transition">
               {open ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>

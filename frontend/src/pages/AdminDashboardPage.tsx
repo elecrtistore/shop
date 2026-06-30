@@ -6,6 +6,7 @@ import { fetchProducts, createProduct, updateProduct, deleteProduct } from '../s
 import { fetchInquiries } from '../services/inquiryService';
 import api from '../services/api';
 import DiscountModal from '../components/DiscountModal';
+import { ChevronDown } from 'lucide-react';
 
 interface SiteContent {
   page: string;
@@ -727,17 +728,18 @@ function AdminDashboardPage() {
                     <h2 className="text-xl font-semibold text-charcoal">Site Content</h2>
                     <p className="mt-2 text-sm text-slate-600">Create and edit pages. Changes appear live on the site.</p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="relative">
                     <select
                       value={sitePage}
                       onChange={(e) => setSitePage(e.target.value)}
-                      className="rounded-3xl border border-slate-200 bg-white px-4 py-2 text-sm text-charcoal focus:border-primary outline-none"
+                      className="appearance-none cursor-pointer rounded-3xl border border-slate-200 bg-white px-4 py-2 pr-10 text-sm text-charcoal outline-none transition focus:border-primary"
                     >
                       {Object.keys(sitePages).length === 0 && <option value="">-- No pages --</option>}
                       {Object.keys(sitePages).sort().map((key) => (
                         <option key={key} value={key}>{key}</option>
                       ))}
                     </select>
+                    <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-soft" />
                   </div>
                 </div>
 

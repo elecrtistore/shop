@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogIn, Mail, Lock, Shield } from 'lucide-react';
+import { LogIn, Mail, Lock, Shield, Eye, EyeOff } from 'lucide-react';
 
 function LoginPage() {
   const { login } = useAuth();
@@ -9,6 +9,7 @@ function LoginPage() {
   const [password, setPassword] = useState('');
   const [adminMode, setAdminMode] = useState(false);
   const [adminCode, setAdminCode] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -52,8 +53,11 @@ function LoginPage() {
             <label className="text-sm font-medium text-charcoal">Password</label>
             <div className="relative mt-2">
               <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-soft" />
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-                className="w-full rounded-xl border border-border bg-white pl-10 pr-4 py-3 text-sm outline-none focus:border-primary transition" />
+              <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required
+                className="w-full rounded-xl border border-border bg-white pl-10 pr-10 py-3 text-sm outline-none focus:border-primary transition" />
+              <button type="button" onClick={() => setShowPassword((p) => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-soft hover:text-charcoal transition">
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 
