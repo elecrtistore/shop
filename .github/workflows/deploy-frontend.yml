@@ -1,4 +1,4 @@
-name: Deploy frontend to GitHub Pages
+name: Deploy frontend to gh-pages branch
 
 on:
   push:
@@ -8,23 +8,14 @@ on:
       - '.github/workflows/deploy-frontend.yml'
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
+  contents: write
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -40,17 +31,12 @@ jobs:
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL || 'https://electrishop-api.onrender.com/api' }}
 
-      - name: SPA fallback for GH Pages
+      - name: SPA fallback
         run: cp dist/index.html dist/404.html
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: frontend/dist
-
-      - name: Deploy to Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: frontend/dist
+          publish_branch: gh-pages
