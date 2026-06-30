@@ -25,3 +25,7 @@ export async function updateProduct(id: string, product: Partial<Product>) {
   const response = await api.put<Product>(`/products/${id}`, product);
   return response.data;
 }
+
+export async function deleteProduct(id: string) {
+  await api.delete(`/products/${id}`);
+}

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Product } from '../types/product';
 import { Inquiry } from '../types/inquiry';
-import { fetchProducts, createProduct, updateProduct } from '../services/productService';
+import { fetchProducts, createProduct, updateProduct, deleteProduct } from '../services/productService';
 import { fetchInquiries } from '../services/inquiryService';
 import api from '../services/api';
 import DiscountModal from '../components/DiscountModal';
@@ -43,6 +43,9 @@ function AdminDashboardPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [discountModalOpen, setDiscountModalOpen] = useState(false);
   const [discountTargetId, setDiscountTargetId] = useState<string | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editImages, setEditImages] = useState<string[]>([]);
+  const [editImageInput, setEditImageInput] = useState('');
 
   useEffect(() => {
     fetchProducts().then(setProducts).catch(console.error);
@@ -140,6 +143,68 @@ function AdminDashboardPage() {
       await updateProduct(productId, { discount: 0 });
     } catch (err) {
       console.error('Failed to remove discount', err);
+    }
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setEditImages([...product.images]);
+    setEditImageInput('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProduct(null);
+    setEditImages([]);
+    setEditImageInput('');
+  };
+
+  const handleAddEditImage = () => {
+    const url = editImageInput.trim();
+    if (!url) return;
+    setEditImages((current) => [...current, url]);
+    setEditImageInput('');
+  };
+
+  const handleRemoveEditImage = (index: number) => {
+    setEditImages((current) => current.filter((_, i) => i !== index));
+  };
+
+  const handleSaveEdit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingProduct) return;
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const name = (formData.get('name') as string)?.trim();
+    const brand = (formData.get('brand') as string)?.trim();
+    const category = (formData.get('category') as string)?.trim();
+    const description = (formData.get('description') as string)?.trim();
+    const price = Number(formData.get('price'));
+    const stock = Number(formData.get('stock'));
+
+    if (!name || !brand || !description || !category || !price || !stock || editImages.length === 0) return;
+
+    try {
+      const updated = await updateProduct(editingProduct._id, {
+        name, brand, category, description, price, stock,
+        images: editImages
+      });
+      setProducts((current) => current.map((p) => (p._id === editingProduct._id ? { ...p, ...updated } : p)));
+      setEditingProduct(null);
+      setEditImages([]);
+      setEditImageInput('');
+    } catch (err) {
+      console.error('Failed to update product', err);
+    }
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (!window.confirm('Are you sure you want to delete this product?')) return;
+    try {
+      await deleteProduct(productId);
+      setProducts((current) => current.filter((p) => p._id !== productId));
+    } catch (err) {
+      console.error('Failed to delete product', err);
     }
   };
 
@@ -288,7 +353,7 @@ function AdminDashboardPage() {
                 {products.length > 0 && (
                   <div className="rounded-[1.75rem] bg-white p-6 shadow-soft ring-1 ring-slate-200/70">
                     <h2 className="text-xl font-semibold text-charcoal">Product catalog</h2>
-                    <p className="mt-2 text-sm text-slate-600">Review all products and apply discounts directly from the admin panel.</p>
+                    <p className="mt-2 text-sm text-slate-600">Review, edit, or remove products and manage images.</p>
                     <div className="mt-6 space-y-4">
                       {products.map((product) => (
                         <div key={product._id} className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
@@ -304,16 +369,99 @@ function AdminDashboardPage() {
                               <div className="flex flex-wrap items-center justify-end gap-2">
                                 <button
                                   type="button"
+                                  onClick={() => handleEditProduct(product)}
+                                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-blue-100"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
                                   onClick={() => product.discount ? handleRemoveDiscount(product._id) : applyDiscount(product._id)}
                                   className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                                 >
                                   {product.discount ? `Remove discount (${product.discount}%)` : 'Add discount'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteProduct(product._id)}
+                                  className="rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+                                >
+                                  Delete
                                 </button>
                               </div>
                             </div>
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {editingProduct && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] bg-white p-8 shadow-soft">
+                      <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-semibold text-charcoal">Edit product</h2>
+                        <button type="button" onClick={handleCancelEdit} className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">&times;</button>
+                      </div>
+                      <form onSubmit={handleSaveEdit} className="mt-6 grid gap-5">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <label className="block">
+                            <span className="text-sm font-medium text-slate-700">Product name</span>
+                            <input name="name" defaultValue={editingProduct.name} className="mt-2 w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-charcoal focus:border-primary outline-none" />
+                          </label>
+                          <label className="block">
+                            <span className="text-sm font-medium text-slate-700">Brand</span>
+                            <input name="brand" defaultValue={editingProduct.brand} className="mt-2 w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-charcoal focus:border-primary outline-none" />
+                          </label>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <label className="block">
+                            <span className="text-sm font-medium text-slate-700">Category</span>
+                            <input name="category" defaultValue={editingProduct.category} className="mt-2 w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-charcoal focus:border-primary outline-none" />
+                          </label>
+                          <label className="block">
+                            <span className="text-sm font-medium text-slate-700">Price (KSh)</span>
+                            <input type="number" name="price" defaultValue={editingProduct.price} className="mt-2 w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-charcoal focus:border-primary outline-none" />
+                          </label>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <label className="block">
+                            <span className="text-sm font-medium text-slate-700">Stock quantity</span>
+                            <input type="number" name="stock" defaultValue={editingProduct.stock} className="mt-2 w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-charcoal focus:border-primary outline-none" />
+                          </label>
+                        </div>
+
+                        <label className="block">
+                          <span className="text-sm font-medium text-slate-700">Description</span>
+                          <textarea name="description" defaultValue={editingProduct.description} rows={3} className="mt-2 w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-charcoal focus:border-primary outline-none" />
+                        </label>
+
+                        <div>
+                          <span className="text-sm font-medium text-slate-700">Images</span>
+                          <div className="mt-2 flex gap-2">
+                            <input value={editImageInput} onChange={(e) => setEditImageInput(e.target.value)} placeholder="https://" className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-charcoal focus:border-primary outline-none" />
+                            <button type="button" onClick={handleAddEditImage} className="rounded-3xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">Add</button>
+                          </div>
+                          {editImages.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-3">
+                              {editImages.map((url, index) => (
+                                <div key={`${url}-${index}`} className="group relative h-20 w-20 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                                  <img src={url} alt="" className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                                  <button type="button" onClick={() => handleRemoveEditImage(index)} className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-xs text-white opacity-0 transition group-hover:opacity-100">&times;</button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex gap-3">
+                          <button type="submit" className="flex-1 rounded-[1.25rem] bg-primary px-6 py-4 text-sm font-semibold text-white transition hover:bg-orange-600">Save changes</button>
+                          <button type="button" onClick={handleCancelEdit} className="rounded-[1.25rem] border border-slate-200 bg-white px-6 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">Cancel</button>
+                        </div>
+                      </form>
                     </div>
                   </div>
                 )}
