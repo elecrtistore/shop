@@ -17,13 +17,33 @@ export async function getProfile(req: Request, res: Response) {
   });
 }
 
+export async function updateProfile(req: Request, res: Response) {
+  const firebaseUser = res.locals.firebaseUser;
+  if (!firebaseUser || !firebaseUser.email) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  const { displayName } = req.body;
+  if (!displayName) {
+    return res.status(400).json({ message: 'displayName is required' });
+  }
+
+  const role = await getRoleForEmail(firebaseUser.email, firebaseUser.uid);
+  res.json({
+    uid: firebaseUser.uid,
+    email: firebaseUser.email,
+    displayName,
+    role
+  });
+}
+
 export async function signup(req: Request, res: Response) {
   const firebaseUser = res.locals.firebaseUser;
   if (!firebaseUser || !firebaseUser.email) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  const { role, adminCode } = req.body;
+  const { role, adminCode, displayName } = req.body;
 
   if (role === 'Admin') {
     const secretCode = process.env.ADMIN_SECRET_CODE;
@@ -43,7 +63,7 @@ export async function signup(req: Request, res: Response) {
   res.json({
     uid: firebaseUser.uid,
     email: firebaseUser.email,
-    displayName: firebaseUser.name || firebaseUser.email,
+    displayName: displayName || firebaseUser.name || firebaseUser.email,
     role: assignedRole
   });
 }

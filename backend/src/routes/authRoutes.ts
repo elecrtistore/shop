@@ -6,5 +6,6 @@ const router = Router();
 
 router.get('/profile', validateFirebaseToken, authController.getProfile);
 router.post('/signup', validateFirebaseToken, authController.signup);
+router.put('/profile', validateFirebaseToken, authController.updateProfile);
 
 export default router;

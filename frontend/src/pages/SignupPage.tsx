@@ -15,7 +15,7 @@ function SignupPage() {
     e.preventDefault();
     setError(''); setSubmitting(true);
     try {
-      await signupWithRole(form.email, form.password, form.role, form.role === 'Admin' ? form.adminCode : undefined);
+      await signupWithRole(form.email, form.password, form.role, form.role === 'Admin' ? form.adminCode : undefined, form.displayName);
       navigate('/shop');
     } catch (err: any) {
       setError(err.message || 'Signup failed.');

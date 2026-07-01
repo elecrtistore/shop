@@ -3,6 +3,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  updateProfile,
   signOut,
   User as FirebaseUser
 } from 'firebase/auth';
@@ -16,7 +17,7 @@ interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string, adminCode?: string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
-  signupWithRole: (email: string, password: string, role: string, adminCode?: string) => Promise<void>;
+  signupWithRole: (email: string, password: string, role: string, adminCode?: string, displayName?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -103,18 +104,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await createUserWithEmailAndPassword(auth, email, password);
   };
 
-  const signupWithRole = async (email: string, password: string, role: string, adminCode?: string) => {
+  const signupWithRole = async (email: string, password: string, role: string, adminCode?: string, displayName?: string) => {
     const intendedRole = role === 'Admin' ? 'Admin' : 'Buyer';
     pendingRole.current = intendedRole;
 
-    await createUserWithEmailAndPassword(auth, email, password);
+    const credential = await createUserWithEmailAndPassword(auth, email, password);
+    if (displayName && credential.user) {
+      await updateProfile(credential.user, { displayName });
+    }
     try {
       const fbUser = auth.currentUser;
       if (fbUser) {
         const token = await fbUser.getIdToken();
-        const profile = await assignRole(token, role, adminCode);
+        const profile = await assignRole(token, role, adminCode, displayName);
         storeRole(profile.role);
-        setUser(profile);
+        setUser({ ...profile, displayName: displayName || profile.displayName });
       }
     } catch {
       storeRole(intendedRole);
