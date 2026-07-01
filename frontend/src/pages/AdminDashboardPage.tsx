@@ -769,7 +769,7 @@ function AdminDashboardPage() {
                       {subscribers.map((sub) => (
                         <div key={sub._id} className="flex items-center justify-between rounded-xl border border-border bg-slate-50 px-4 py-3">
                           <div>
-                            <p className="text-sm font-medium text-charcoal">{sub.email}</p>
+                            <p className="text-sm font-medium text-charcoal break-all">{sub.email}</p>
                             {sub.name && <p className="text-xs text-soft">{sub.name}</p>}
                           </div>
                           <button onClick={() => handleDeleteSubscriber(sub._id)} className="rounded-full p-2 text-soft hover:text-rose-600 hover:bg-rose-50 transition">

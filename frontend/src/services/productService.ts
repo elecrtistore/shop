@@ -12,7 +12,7 @@ export async function fetchProductById(id: string) {
 }
 
 export async function fetchCategories() {
-  const response = await api.get<string[]>('/categories');
+  const response = await api.get<{ _id: string; name: string; icon: string; image: string }[]>('/categories');
   return response.data;
 }
 

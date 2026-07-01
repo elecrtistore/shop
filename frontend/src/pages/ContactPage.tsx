@@ -53,7 +53,7 @@ function ContactPage() {
                   {Icon && <Icon size={24} className="text-primary" />}
                 </div>
                 <h2 className="text-lg font-semibold text-charcoal mb-2">{section.heading}</h2>
-                <p className="text-sm text-soft">{section.content}</p>
+                <p className="text-sm text-soft break-all">{section.content}</p>
               </Wrapper>
             );
           })}

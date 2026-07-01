@@ -45,7 +45,7 @@ function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/admin" element={<RoleGuard allowed={['Admin']}><AdminDashboardPage /></RoleGuard>} />
           <Route path="/about" element={<AboutPage />} />
-          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/contacts" element={<ContactPage />} />
         </Routes>
       </Layout>
     </div>

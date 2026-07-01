@@ -10,14 +10,25 @@ interface HeroContent {
   sections: { heading: string; content: string }[];
 }
 
-const categoryIcons: Record<string, string> = {
-  Phones: '📱', Laptops: '💻', Audio: '🎧', Accessories: '⚡', Tablets: '📲', Gaming: '🎮', Cameras: '📷', TVs: '📺'
-};
+interface CategoryItem {
+  _id: string; name: string; icon: string; image: string;
+}
+
+const fallbackCategories: CategoryItem[] = [
+  { _id: '1', name: 'Phones', icon: '📱', image: '' },
+  { _id: '2', name: 'Laptops', icon: '💻', image: '' },
+  { _id: '3', name: 'Audio', icon: '🎧', image: '' },
+  { _id: '4', name: 'Accessories', icon: '⚡', image: '' },
+  { _id: '5', name: 'Tablets', icon: '📲', image: '' },
+  { _id: '6', name: 'Gaming', icon: '🎮', image: '' },
+  { _id: '7', name: 'Cameras', icon: '📷', image: '' },
+  { _id: '8', name: 'TVs', icon: '📺', image: '' }
+];
 
 function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [hero, setHero] = useState<HeroContent>({ title: '', subtitle: '', body: '', sections: [] });
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
@@ -91,8 +102,8 @@ function HomePage() {
             </div>
             <div className="relative hidden lg:block">
               <div className="relative grid grid-cols-3 gap-4">
-                {(products.length > 0 ? products.slice(0, 6) : []).map((product, i) => (
-                  <Link key={product._id} to={`/products/${product._id}`} className={`aspect-square border border-border bg-white overflow-hidden hover:scale-105 transition-transform ${i === 1 ? 'translate-y-4' : i === 2 ? '-translate-y-2' : ''}`}>
+                {(products.length > 0 ? products.slice(0, 6) : []).map((product) => (
+                  <Link key={product._id} to={`/products/${product._id}`} className="aspect-square border border-border bg-white overflow-hidden hover:scale-105 transition-transform">
                     <img src={product.images[0]} alt={product.name} className="w-full h-full object-contain p-2" />
                   </Link>
                 ))}
@@ -110,14 +121,18 @@ function HomePage() {
             <Link to="/shop" className="text-sm font-semibold text-primary hover:text-primary-hover transition">View all</Link>
           </div>
           <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-none">
-            {(categories.length > 0 ? categories : ['Phones', 'Laptops', 'Audio', 'Accessories', 'Tablets', 'Gaming', 'Cameras', 'TVs']).map((cat) => (
-              <Link key={cat} to={`/shop?category=${cat}`} className="flex flex-col items-center gap-3 min-w-[100px] group">
-                <div className="w-16 h-16 rounded-2xl bg-white shadow-card flex items-center justify-center text-2xl group-hover:scale-110 transition-transform group-hover:shadow-soft">
-                  {categoryIcons[cat] || '📦'}
-                </div>
-                <span className="text-sm font-medium text-charcoal text-center">{cat}</span>
-              </Link>
-            ))}
+            {(categories.length > 0 ? categories : fallbackCategories).map((cat) => {
+              const name = typeof cat === 'string' ? cat : cat.name;
+              const icon = typeof cat === 'string' ? '📦' : cat.icon;
+              return (
+                <Link key={name} to={`/shop?category=${name}`} className="flex flex-col items-center gap-3 min-w-[100px] group">
+                  <div className="w-16 h-16 rounded-2xl bg-white shadow-card flex items-center justify-center text-2xl group-hover:scale-110 transition-transform group-hover:shadow-soft">
+                    {icon || '📦'}
+                  </div>
+                  <span className="text-sm font-medium text-charcoal text-center">{name}</span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -159,7 +174,7 @@ function HomePage() {
                       <span className="inline-block rounded-full bg-emerald-50 px-3 py-0.5 text-xs font-semibold text-emerald-600">{product.discount}% OFF</span>
                     )}
                     <div className="pt-3 flex gap-2">
-                      <span className="flex-1 rounded-full bg-primary text-center text-sm font-semibold text-white py-2">View details</span>
+                      <span className="flex-1 rounded-full bg-primary text-center text-sm font-semibold text-white py-2 group-hover:bg-primary-hover transition">View details</span>
                     </div>
                   </div>
                 </Link>
@@ -179,24 +194,6 @@ function HomePage() {
                 {brand}
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── PROMOTIONAL BANNER ─── */}
-      <section className="py-20">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500 to-orange-600 p-10 sm:p-16">
-            <div className="relative z-10 max-w-lg space-y-6">
-              <h2 className="text-3xl sm:text-4xl font-bold text-white leading-tight">Premium Electronics, Direct from the Seller</h2>
-              <p className="text-orange-100 leading-relaxed">Skip the middleman. Inquire about any product and get a personalized quote within hours.</p>
-              <Link to="/shop" className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-orange-600 hover:bg-orange-50 transition">
-                Browse collection <ArrowRight size={16} />
-              </Link>
-            </div>
-            <div className="absolute right-0 top-0 bottom-0 w-1/3 hidden lg:block">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_white_0%,_transparent_60%)] opacity-20" />
-            </div>
           </div>
         </div>
       </section>

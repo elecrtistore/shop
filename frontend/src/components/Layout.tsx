@@ -66,7 +66,7 @@ function Layout({ children }: { children: React.ReactNode }) {
     ...(user?.role !== 'Admin' ? [{ to: '/inquiry-list', label: 'Inquiry Cart' }] : []),
     ...(user ? [{ to: '/my-inquiries', label: 'My Inquiries' }] : []),
     { to: '/about', label: 'About' },
-    { to: '/contact', label: 'Contact' },
+    { to: '/contacts', label: 'Contacts' },
     ...(user?.role === 'Admin' ? [{ to: '/admin', label: 'Admin' }] : []),
   ];
 

@@ -172,7 +172,7 @@ function ShopPage() {
                 Admin mode: drag to reorder &middot; click price to edit &middot; use discount buttons
               </div>
             )}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="rounded-2xl bg-white border border-border/60 overflow-hidden animate-pulse">
