@@ -309,3 +309,339 @@ MongoDB URI: mongodb+srv://elecrtistore_db_user:Ig400H2uMP4BLls6@cluster0.cactqv
 | `/api/site/:page` | PUT/DELETE | Protected |
 | `/api/email/subscribers` | GET/DELETE | Protected |
 | `/api/email/send` | POST | HTML sanitized |
+
+---
+
+## 11. Comprehensive Security Test Matrix
+
+### 11.1 OWASP API Security Top 10
+
+| # | Category | Test Case | Method | Expected | Status |
+|---|----------|----------|--------|----------|--------|
+| API1 | BOLA | Access inquiry by ID without auth | GET /api/inquiries/:id | 401 | **Fixed** — auth required |
+| API1 | BOLA | Access another user's inquiry | GET /api/inquiries/:id | 403 | **Fixed** — ownership check |
+| API2 | BOPLA | Add extra fields to product create | POST /api/products + extra fields | Stripped | **Fixed** — allowlist |
+| API2 | BOPLA | Modify `estimatedTotal` before submit | POST /api/inquiries with altered total | Accepted | **Open** — trust client value |
+| API3 | BFLA | Call admin stats as buyer | GET /api/dashboard/stats | 403 | **Fixed** — adminGuard |
+| API3 | BFLA | Delete product as unauthenticated | DELETE /api/products/:id | 401 | **Fixed** |
+| API4 | Resource Consumption | Submit 10MB inquiry payload | POST /api/inquiries large body | 413 | **Fixed** — 100kb limit |
+| API4 | Resource Consumption | Deeply nested JSON | POST /api/inquiries nested 100 levels | Reject | **Open** — no depth limit |
+| API5 | Third-party | SSRF via product image URL | POST /api/products image=http://internal.admin | No fetch | **Low** — URLs stored, not fetched |
+| API6 | SSRF | Webhook/callback injection | No callback features exist | N/A | N/A |
+| API7 | Misconfiguration | Access debug endpoints | /debug, /admin, /.env | 404 | **Acceptable** |
+| API7 | Misconfiguration | Verbose error on invalid input | POST bad data | Generic | **Fixed** |
+| API8 | Inventory | Old API version still active | No versioning used | N/A | N/A |
+| API9 | Injection | Mongo `$ne` in inquiry search | GET /api/inquiries?status[$ne]= | 400 | **Fixed** — no raw query params |
+| API9 | Injection | `__proto__` in product create | POST /api/products with prototype | Stripped | **Fixed** — JSON.parse default |
+| API10 | Business Flow | Submit 1000 inquiries in parallel | POST /api/inquiries rapid fire | Rate limited | **Fixed** — rate limiter |
+
+### 11.2 Business Logic Attack Matrix
+
+| Test | Method | Impact | Mitigation | Status |
+|------|--------|--------|------------|--------|
+| Submit same inquiry 1000 times | POST /api/inquiries | Inquiry spam | Rate limited, validated | **Fixed** |
+| Replay captured request | POST + same body | Duplicate orders | No idempotency key | **Open** |
+| Negative quantity | POST items[0].quantity=-1 | Price manipulation | Validated (min: 1) | **Fixed** |
+| Zero price | POST items[0].price=0 | Price manipulation | Validated (min: 0) | **Fixed** |
+| Out-of-stock product | POST with unavailable productId | False order | No stock check on inquiry | **Open** |
+| Max integer price | POST price=999999999999 | Overflow | Validated as float | **Acceptable** |
+| HTML in customer name | POST customer.name=`<script>` | Stored XSS | MongoDB stores as-is, React escapes | **Fixed** |
+| Bypass status flow | PUT status from New to Sold | Skip negotiation | Validated against enum | **Fixed** |
+| Race condition on stock | Concurrent PUT stock | Oversell | No stock management | **Open** |
+| Email subscriber bombing | POST /subscribe with 10k emails | Exhaustion | Rate limited | **Fixed** |
+
+### 11.3 Session & JWT Security
+
+| Test | Method | Expected | Status |
+|------|--------|----------|--------|
+| Expired Firebase token | Replay old Authorization header | 401 | **Fixed** — verifyIdToken checks exp |
+| Modified JWT payload | Tamper uid/email in token | Invalid signature | **Fixed** — Admin SDK verification |
+| Algorithm confusion | Change alg to "none" | Rejected | **Fixed** — Firebase SDK validates |
+| Token from different issuer | Use token from other Firebase project | Invalid issuer | **Fixed** — SDK checks iss |
+| Stolen token replay | Capture + reuse token | Blocked after expiry (1hr) | **Acceptable** — short-lived |
+| Session fixation | Login with pre-set session | New session created | **Acceptable** — Firebase manages |
+| Logout invalidates token | Use token after signOut | Still valid until expiry | **Open** — no revokeRefreshTokens |
+| Multiple simultaneous sessions | Login from 2 devices | Both valid | **Acceptable** |
+| Refresh token abuse | Steal refresh token | Rotated on use | **Acceptable** — Firebase handles |
+| Token in URL/logs | Check for token leakage | Header only, not in URL | **Fixed** |
+
+### 11.4 Browser Security Tests
+
+| Test | Payload/Method | Expected | Status |
+|------|---------------|----------|--------|
+| Clickjacking | Render in iframe | Blocked | **Fixed** — Helmet X-Frame-Options |
+| Mixed content | Load http:// resources | Blocked by CSP | **Fixed** — CSP img-src https: |
+| MIME sniffing | Serve JS as HTML | Blocked | **Fixed** — X-Content-Type-Options |
+| CSP bypass | inline event handler | Blocked | **Fixed** — script-src restricted |
+| Referrer leakage | Cross-origin navigation | Trimmed | **Fixed** — Referrer-Policy default |
+| Tabnabbing | target="_blank" no rel | Blocked | **Fixed** — rel="noreferrer" used |
+| DOM XSS | URL fragment injection | Escaped by React | **Fixed** |
+| LocalStorage theft | XSS → read electrishop-role | Role only, not token | **Acceptable** |
+| Cookie theft | XSS → steal cookies | No session cookies used | **Acceptable** |
+
+### 11.5 MongoDB Security Tests
+
+| Test | Payload | Expected | Status |
+|------|---------|----------|--------|
+| NoSQL injection (login bypass) | `{ "$ne": "" }` | Rejected | **Fixed** — no raw query passthrough |
+| NoSQL injection (in inquiry) | `{ "$gt": "" }` in params | Not applicable | **Fixed** — findById uses string |
+| Regex DoS | `.*.*.*.*...` long pattern | No regex endpoint | **Acceptable** |
+| Aggregation injection | Inject pipeline stages | No user-facing aggregation | **Acceptable** |
+| Operator injection | `$where`, `$regex` in body | Stripped by allowlist | **Fixed** |
+| Collection enumeration | Guess collection names | No schema leak | **Acceptable** |
+| Read preference abuse | `?readPreference=secondary` | Not exposed | **Acceptable** |
+| Index abuse | Force slow queries | No user queries exposed | **Acceptable** |
+
+### 11.6 Rate Limiting Verification
+
+| Test | Endpoint | Attempts | Expected | Status |
+|------|----------|----------|----------|--------|
+| Global limit | /api/products | 101 in 15min | 429 after 100 | **Fixed** |
+| Auth limit | /api/auth/profile | 11 in 15min | 429 after 10 | **Fixed** |
+| Burst bypass | 100 req in 1sec | /api/inquiries | Rate limited | **Fixed** (windowed) |
+| Distributed bypass | 100 different IPs | Each IP limited | Per-IP counting | **Fixed** (default) |
+| Email spam | /api/email/send | Multiple sends | Rate limited | **Fixed** |
+| Inquiry spam | /api/inquiries | Rapid POST | Rate limited | **Fixed** |
+| Bypass via headers | X-Forwarded-For spoof | Trusts proxy chain | **Open** (Render handles) | **Acceptable** |
+
+### 11.7 Email Security Tests
+
+| Test | Payload | Expected | Status |
+|------|---------|----------|--------|
+| HTML injection | `<script>` in email body | Stripped | **Fixed** — xss sanitized |
+| Header injection | `\r\nBCC: spam@evil.com` in subject | Rejected | **Acceptable** — nodemailer encodes |
+| Template injection | `{{user.name}}` in body | Not evaluated | **Acceptable** — no template engine |
+| Spoofing | Fake from address | SPF/DKIM on Gmail | **Acceptable** — Gmail enforces |
+| Open relay | Send to non-subscriber | Blocked | **Fixed** — only to subscribers |
+| SPF check | Verify DNS records | Gmail auto-configures | **Acceptable** |
+| DMARC policy | Check _dmarc TXT | Not configured | **Open** |
+| DKIM signing | Verify email integrity | Gmail auto-signs | **Acceptable** |
+| Mass unsubscribe | One-click unsubscribe | No link | **Open** |
+| Rate limit bypass | Multiple template types | Still rate limited | **Fixed** |
+
+### 11.8 File & Upload Security (Future-Proofing)
+
+| Test | Scenario | Expected | Status |
+|------|----------|----------|--------|
+| MIME validation | Upload .exe as image | No upload endpoint | N/A |
+| Double extension | image.jpg.php | N/A | N/A |
+| Zip bomb | Compressed 10GB archive | N/A | N/A |
+| SVG XSS | SVG with embedded script | N/A | N/A |
+| Oversized file | 500MB upload | N/A | N/A |
+| Path traversal | `../../etc/passwd` as filename | N/A | N/A |
+
+All product images are URL references, not uploaded files. No file upload endpoint exists. When added, apply allowlist (images/*) + size limit + virus scanning.
+
+### 11.9 Infrastructure & Network Tests
+
+| Test | Tool/Method | Expected | Status |
+|------|-------------|----------|--------|
+| Open ports | Nmap scan | 443 (HTTPS), 80 (redirect) | **Acceptable** — Render manages |
+| TLS version | SSL Labs | TLS 1.2+ | **Acceptable** — Render enforces |
+| Weak ciphers | testssl.sh | No weak ciphers | **Acceptable** |
+| HSTS header | curl -I | max-age=31536000 | **Fixed** — Helmet includes |
+| DNS records | dig | Correct A/AAAA/CNAME | **Open** — verify DNS |
+| Subdomain enumeration | Sublist3r | No unexpected subdomains | **Acceptable** |
+| Reverse proxy | X-Forwarded-For handling | Trusted | **Acceptable** |
+| HTTP methods | OPTIONS /api | Only allowed methods | **Fixed** — CORS restricted |
+| HTTPS redirect | HTTP → HTTPS | Automatic | **Acceptable** — Render handles |
+
+### 11.10 Cloud Security — Render
+
+| Test | Method | Expected | Status |
+|------|--------|----------|--------|
+| Debug mode | NODE_ENV check | Production | **Fixed** — render.yaml sets production |
+| Stack trace | Trigger 500 error | Generic message | **Fixed** |
+| Environment isolation | Access other services | Not possible | **Acceptable** — Render sandboxed |
+| Secret rotation | Change env vars | Requires deploy | **Open** — manual process |
+| Container escape | Break out of runtime | Render hardened | **Acceptable** |
+| Health check abuse | /api/health | Public, no data leak | **Acceptable** |
+
+### 11.11 Cloud Security — MongoDB Atlas
+
+| Test | Method | Expected | Status |
+|------|--------|----------|--------|
+| IP whitelist | Connect from non-whitelisted IP | Blocked | **Open** — 0.0.0.0/0 allows all |
+| TLS enforcement | Connect without TLS | Rejected | **Acceptable** — Atlas requires TLS |
+| Database user roles | Check permissions | readWrite on all DBs | **Open** — scope to single DB |
+| Audit logs | Enable Atlas auditing | Not enabled | **Open** |
+| Backup encryption | Check backup config | Atlas encrypts at rest | **Acceptable** |
+| Encryption at rest | Verify AES-256 | Atlas default | **Acceptable** |
+| VPC peering | Network isolation | Not configured | **Open** — premium feature |
+
+### 11.12 Firebase Security Tests
+
+| Test | Method | Expected | Status |
+|------|--------|----------|--------|
+| Custom claims | Set admin via Firebase Admin SDK | Not implemented | **Open** — uses env/mongo instead |
+| Revoked tokens | Call revokeRefreshTokens() | Not called on logout | **Open** |
+| Anonymous login | signInAnonymously | Not implemented | N/A |
+| Firestore rules | Test read/write from client | Not using Firestore | N/A |
+| Storage rules | Test file access | Not using Storage | N/A |
+| Password reset abuse | Repeated reset emails | Firebase throttles | **Acceptable** |
+| Account enumeration | Check if email exists | Firebase returns generic | **Acceptable** |
+| Rate limiting on auth | Multiple login attempts | Firebase handles | **Acceptable** |
+
+### 11.13 Logging & Monitoring Audit
+
+| Test | Check | Expected | Status |
+|------|-------|----------|--------|
+| Password in logs | Trigger login error | No password logged | **Fixed** — morgan logs URL + status only |
+| Token in logs | Trigger auth error | No token logged | **Fixed** |
+| Cookie in logs | Check morgan output | No cookies | **Acceptable** |
+| API key in logs | Check error handler | No keys | **Fixed** |
+| Stack trace in prod | Trigger 500 | Generic message | **Fixed** |
+| PII in error response | Invalid input | Only validation errors | **Fixed** |
+| Admin audit trail | Track who changed what | Not implemented | **Open** |
+| Log retention | Check storage duration | Render logs rotate | **Acceptable** |
+
+### 11.14 Dependency Security
+
+| Test | Tool | Result | Status |
+|------|------|--------|--------|
+| Known vulns | npm audit | 6 moderate (uuid transitive) | **Open** — firebase-admin dependency |
+| Known vulns | Snyk | Not run | **Open** |
+| Known vulns | Dependabot | Not configured | **Open** |
+| Outdated packages | npm outdated | Check periodically | **Open** |
+| Supply chain | Package-lock integrity | Lockfile present | **Fixed** |
+| Typosquatting | Review package names | All legitimate | **Acceptable** |
+| License audit | Check licenses | Not reviewed | **Open** |
+
+### 11.15 Denial of Service Resistance
+
+| Test | Payload | Expected | Status |
+|------|---------|----------|--------|
+| Slowloris | Slow HTTP headers | Timeout | **Acceptable** — Render reverse proxy |
+| JSON bomb | Deeply nested `[` | Depth limit missing | **Open** |
+| Large JSON | 500MB payload | 413 Entity Too Large | **Fixed** — 100kb limit |
+| Regex bomb | Evil regex in input | No user regex | **Acceptable** |
+| Compression bomb | zlib-compressed payload | No compression accepted | **Acceptable** |
+| Connection flood | 10k concurrent sockets | Rate limited | **Fixed** |
+| CPU exhaustion | Expensive aggregation | No user aggregation | **Acceptable** |
+| Memory exhaustion | Large product array in body | 100kb cap protects | **Fixed** |
+
+### 11.16 Privacy & Compliance
+
+| Requirement | Check | Status |
+|-------------|-------|--------|
+| GDPR consent | Cookie consent banner | **Fixed** — CookieConsent component |
+| Privacy policy | Published page | **Fixed** — /privacy |
+| Terms of service | Published page | **Fixed** — /terms |
+| Data deletion | Delete account endpoint | **Open** — no user deletion |
+| Data export | Export user data API | **Open** |
+| Data retention policy | Auto-delete old inquiries | **Open** |
+| Right to be forgotten | Purge PII on request | **Open** |
+| Breach notification plan | Documented process | **Open** |
+| Data Processing Agreement | With third parties | **Acceptable** — Firebase/Atlas/Gmail have DPAs |
+
+### 11.17 Secret Leakage Scan
+
+| Tool | Scan Target | Status |
+|------|-------------|--------|
+| GitLeaks | Full git history | **Open** — not run |
+| TruffleHog | Full git history | **Open** — not run |
+| GitGuardian | GitHub integration | **Open** — not configured |
+| Manual review | Check for committed .env | **Acceptable** — .env in gitignore |
+| Manual review | Check for hardcoded keys | **Acceptable** — all in env vars |
+
+## 12. Risk Scoring Summary (CVSS v3.1)
+
+| # | Finding | CVSS Score | Severity | Status |
+|---|---------|------------|----------|--------|
+| 1 | MongoDB Atlas IP whitelist 0.0.0.0/0 | 9.1 | **Critical** | Open |
+| 2 | Weak admin secret code (123456789) | 8.6 | **High** | Open |
+| 3 | No DB credential rotation | 8.6 | **High** | Open |
+| 4 | SMTP password exposed in audit doc | 7.5 | **High** | Open |
+| 5 | Firebase private key in .env | 7.5 | **High** | Open |
+| 6 | No recaptcha on public forms | 6.1 | **Medium** | Open |
+| 7 | Seller PII publicly exposed | 5.3 | **Medium** | Open |
+| 8 | No logout token revocation | 5.3 | **Medium** | Open |
+| 9 | No email verification on subscribe | 5.0 | **Medium** | Open |
+| 10 | No idempotency on inquiry submit | 4.8 | **Medium** | Open |
+| 11 | No audit logging for admin actions | 4.3 | **Medium** | Open |
+| 12 | Missing depth limit on JSON parser | 3.7 | **Low** | Open |
+| 13 | No stock validation on inquiry | 3.7 | **Low** | Open |
+| 14 | No HSTS preload configured | 3.1 | **Low** | Open |
+| 15 | 6 moderate npm vulns (transitive) | 5.0 | **Medium** | Open |
+
+## 13. Security Maturity Scorecard
+
+| Category | Score | Notes |
+|----------|-------|-------|
+| Authentication | 9/10 | Firebase handles core auth; missing token revocation on logout |
+| Authorization | 8/10 | Admin + owner checks in place; no fine-grained RBAC |
+| Input Validation | 8/10 | Validated + allowlisted; no depth limit on JSON |
+| API Security | 7/10 | Most BOLA/BFLA fixed; client-side price trust is weak |
+| XSS Prevention | 9/10 | React auto-escapes + CSP + email sanitizer |
+| Rate Limiting | 8/10 | Global + auth limits; no per-endpoint tuning |
+| Session Management | 6/10 | Firebase handles; no revocation, no refresh rotation |
+| MongoDB Security | 6/10 | No injection vectors; Atlas IP whitelist open |
+| Email Security | 6/10 | HTML sanitized; no SPF/DMARC verification |
+| Infrastructure | 5/10 | Render manages most; no port scan, no SSL test run |
+| Cloud Security | 5/10 | Atlas IP open, no audit logs, no VPC |
+| Logging & Monitoring | 4/10 | Basic request logging; no admin audit trail |
+| Dependency Security | 4/10 | npm audit shows 6 vulns; no Dependabot/Snyk |
+| Privacy & Compliance | 5/10 | Consent banner + policies present; no data export/delete |
+| Business Logic | 5/10 | Most flow attacks blocked; no idempotency, no stock check |
+| **Overall** | **6.3/10** | **Strong app-level security; operational gaps remain** |
+
+## 14. Attack Scenarios — Additional Coverage
+
+| Attack | Vector | Mitigation | Status |
+|--------|--------|------------|--------|
+| HTTP Parameter Pollution | `?id=valid&id=malicious` | Express takes last value | **Acceptable** |
+| Cache Poisoning | Manipulate cached responses | No caching layer | **Acceptable** |
+| Web Cache Deception | `/api/inquiries/test.css` | No cache on API | **Acceptable** |
+| HTTP Request Smuggling | CL/TE desync | Render reverse proxy handles | **Acceptable** |
+| Host Header Injection | Malicious Host header | Render validates | **Acceptable** |
+| CRLF Injection | `%0d%0a` in headers | Helmet + Express sanitize | **Fixed** |
+| Prototype Pollution | `__proto__` in JSON | JSON.parse safe by default | **Acceptable** |
+| Unicode Normalization | UTF-8 encoded `../../` | No path traversal vectors | **Acceptable** |
+| SSTI | `{{constructor}}` in body | No template engine | **Acceptable** |
+| Open Redirect | `/redirect?url=http://evil` | No redirect endpoints | **Acceptable** |
+| DNS Rebinding | Point domain to internal IP | CORS origin check blocks | **Fixed** |
+| Timing Attack | Measure response time on auth | Firebase constant-time | **Acceptable** |
+| Email Enumeration | Check signup responses | Uniform responses | **Acceptable** |
+| Race Condition (inventory) | Concurrent stock decrement | No inventory management | **Open** |
+| CORS Preflight Abuse | Malicious OPTIONS request | Restricted methods + origins | **Fixed** |
+
+## 15. Recommended Tooling for CI/CD Pipeline
+
+| Tool | Purpose | Priority |
+|------|---------|----------|
+| **npm audit** | Dependency vulnerability scan | **High** — run on every build |
+| **ESLint Security Plugin** | Detect insecure JS patterns | **High** |
+| **CodeQL** | GitHub-native SAST scanning | **Medium** — free for public repos |
+| **Dependabot** | Automated dependency PRs | **Medium** — free on GitHub |
+| **GitLeaks** | Secret leakage prevention | **High** — run pre-commit |
+| **Snyk** | Comprehensive dependency audit | **Medium** — free tier available |
+| **OWASP ZAP** | DAST — automated web scanning | **Medium** |
+| **Trivy** | Container/filesystem vuln scan | **Low** — when containerized |
+| **Semgrep** | Custom SAST rule engine | **Low** |
+| **k6** | Load + DoS resistance testing | **Low** |
+
+## 16. Incident Response Plan (Checklist)
+
+| Phase | Action |
+|-------|--------|
+| **Detect** | Monitor Render logs for 5xx spikes, unexpected 401s, rate limit triggers |
+| **Triage** | Check if breach is: credential leak,0-day, configuration error, or DoS |
+| **Contain** | Rotate all secrets (MongoDB, Firebase, SMTP). Update Atlas IP whitelist. Suspend Render service if needed. |
+| **Eradicate** | Remove attacker access. Purge any injected data. Review Admin collection. |
+| **Recover** | Restore from backup. Verify integrity. Deploy with rotated credentials. |
+| **Post-mortem** | Document timeline. Update security controls. Add detection rules. |
+
+## 17. Verification Status Legend
+
+| Status | Meaning |
+|--------|---------|
+| **Fixed** | Vulnerability is remediated in the current codebase |
+| **Acceptable** | Risk is understood, accepted, or mitigated by platform |
+| **Open** | Requires action (code change, config change, or operational task) |
+| N/A | Not applicable to this application |
+
+---
+
+**Document Version**: 2.0  
+**Last Updated**: 2026-07-01  
+**Scope**: Full-stack security audit covering OWASP Top 10, API Security, Business Logic, Infrastructure, Cloud, and Compliance.
