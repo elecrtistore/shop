@@ -247,7 +247,10 @@ MongoDB URI: mongodb+srv://elecrtistore_db_user:Ig400H2uMP4BLls6@cluster0.cactqv
 | 12 | **Email template XSS** | Added `xss` sanitization for all user-supplied email content (body, subject, product name/brand) | `controllers/emailController.ts` |
 | 13 | **Morgan dev mode in production** | Conditional: `morgan('combined')` in production, `dev` otherwise | `index.ts` |
 | 14 | **Missing CSP header** | Configured Helmet with strict CSP (script-src, style-src, img-src, connect-src, font-src limited) | `index.ts` |
-| 15 | **render.yaml placeholder admin email** | Changed `ADMIN_EMAILS` from hardcoded placeholder to `sync: false` (must be set in dashboard) | `render.yaml` |
+| 15 | **HSTS + other Helmet protections disabled** | `helmet()` was called with only CSP option, disabling all other defaults. Fixed by calling `helmet()` then `helmet.contentSecurityPolicy()` separately — HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, etc. now active | `index.ts` |
+| 16 | **render.yaml placeholder admin email** | Changed `ADMIN_EMAILS` from hardcoded placeholder to `sync: false` (must be set in dashboard) | `render.yaml` |
+| 17 | **Validation middleware defined but never wired** | `validateInquiry` and `validateProduct` were exported from controllers but never added to route middleware chains. Wired into routes. | `routes/inquiryRoutes.ts`, `routes/productRoutes.ts` |
+| 18 | **Seller PII exposed publicly** | Seller phone and WhatsApp numbers were returned to all visitors via `GET /api/products` and `GET /api/products/:id`. Added `sanitizeProduct()` to strip `sellerPhone` and `sellerWhatsapp` on public endpoints. Admin endpoints return full data. | `controllers/productController.ts` |
 
 ### Remaining Recommendations (Manual / Operational)
 
@@ -262,16 +265,19 @@ MongoDB URI: mongodb+srv://elecrtistore_db_user:Ig400H2uMP4BLls6@cluster0.cactqv
 #### High
 7. **Add recaptcha** to inquiry and subscribe forms to prevent bot abuse
 8. **Implement email verification** for subscriptions (double opt-in)
-9. **Restrict seller contact info** to authenticated users only (phone/Whatsapp currently public)
-10. **Audit git history** for previously committed secrets (`git log --all -p` for sensitive patterns)
+9. **Audit git history** for previously committed secrets (`git log --all -p` for sensitive patterns)
 
 #### Medium
-11. **Add audit logging** for all admin actions (who changed what, when)
-12. **Implement proper RBAC** server-side (not just localStorage role)
-13. **Regular `npm audit`** and dependency updates (current: 6 moderate vulns)
-14. **Add `.env.example`** to git without real secrets
-15. **Add health check monitoring** and automated backup verification
-16. **Review Firebase Firestore Security Rules** if Firestore is used
+10. **Add audit logging** for all admin actions (who changed what, when)
+11. **Implement proper RBAC** server-side (not just localStorage role)
+12. **Regular `npm audit`** and dependency updates (current: 6 moderate vulns)
+13. **Add `.env.example`** to git without real secrets
+14. **Add health check monitoring** and automated backup verification
+15. **Review Firebase Firestore Security Rules** if Firestore is used
+16. **Add idempotency key** for inquiry submission to prevent duplicates
+17. **Add depth limit** to JSON parser to prevent nested object attacks
+18. **Implement server-side price recalculation** for inquiry estimatedTotal (don't trust client)
+19. **Add logout token revocation** via `revokeRefreshTokens()`
 
 ## 10. Updated API Route Map
 
@@ -280,8 +286,8 @@ MongoDB URI: mongodb+srv://elecrtistore_db_user:Ig400H2uMP4BLls6@cluster0.cactqv
 | Route | Method | Risk Level | Notes |
 |-------|--------|------------|-------|
 | `/api/health` | GET | None | |
-| `/api/products` | GET | **MEDIUM** — Seller phone/Whatsapp exposed | |
-| `/api/products/:id` | GET | **MEDIUM** | |
+| `/api/products` | GET | Low — Seller PII filtered | Sensitive fields stripped |
+| `/api/products/:id` | GET | Low | Seller PII stripped |
 | `/api/categories` | GET | Low | |
 | `/api/site/:page` | GET | Low | |
 | `/api/inquiries` | POST | Low — Rate limited + validated | Input validation applied, rate limited |
@@ -369,11 +375,11 @@ MongoDB URI: mongodb+srv://elecrtistore_db_user:Ig400H2uMP4BLls6@cluster0.cactqv
 
 | Test | Payload/Method | Expected | Status |
 |------|---------------|----------|--------|
-| Clickjacking | Render in iframe | Blocked | **Fixed** — Helmet X-Frame-Options |
+| Clickjacking | Render in iframe | Blocked | **Fixed** — Helmet X-Frame-Options via default helmet() |
 | Mixed content | Load http:// resources | Blocked by CSP | **Fixed** — CSP img-src https: |
-| MIME sniffing | Serve JS as HTML | Blocked | **Fixed** — X-Content-Type-Options |
+| MIME sniffing | Serve JS as HTML | Blocked | **Fixed** — X-Content-Type-Options via default helmet() |
 | CSP bypass | inline event handler | Blocked | **Fixed** — script-src restricted |
-| Referrer leakage | Cross-origin navigation | Trimmed | **Fixed** — Referrer-Policy default |
+| Referrer leakage | Cross-origin navigation | Trimmed | **Fixed** — Referrer-Policy via default helmet() |
 | Tabnabbing | target="_blank" no rel | Blocked | **Fixed** — rel="noreferrer" used |
 | DOM XSS | URL fragment injection | Escaped by React | **Fixed** |
 | LocalStorage theft | XSS → read electrishop-role | Role only, not token | **Acceptable** |
@@ -554,15 +560,14 @@ All product images are URL references, not uploaded files. No file upload endpoi
 | 4 | SMTP password exposed in audit doc | 7.5 | **High** | Open |
 | 5 | Firebase private key in .env | 7.5 | **High** | Open |
 | 6 | No recaptcha on public forms | 6.1 | **Medium** | Open |
-| 7 | Seller PII publicly exposed | 5.3 | **Medium** | Open |
-| 8 | No logout token revocation | 5.3 | **Medium** | Open |
-| 9 | No email verification on subscribe | 5.0 | **Medium** | Open |
-| 10 | No idempotency on inquiry submit | 4.8 | **Medium** | Open |
+| 7 | No logout token revocation | 5.3 | **Medium** | Open |
+| 8 | No email verification on subscribe | 5.0 | **Medium** | Open |
+| 9 | No idempotency on inquiry submit | 4.8 | **Medium** | Open |
+| 10 | Client-side estimatedTotal trusted | 4.8 | **Medium** | Open |
 | 11 | No audit logging for admin actions | 4.3 | **Medium** | Open |
 | 12 | Missing depth limit on JSON parser | 3.7 | **Low** | Open |
 | 13 | No stock validation on inquiry | 3.7 | **Low** | Open |
-| 14 | No HSTS preload configured | 3.1 | **Low** | Open |
-| 15 | 6 moderate npm vulns (transitive) | 5.0 | **Medium** | Open |
+| 14 | 6 moderate npm vulns (transitive) | 5.0 | **Medium** | Open |
 
 ## 13. Security Maturity Scorecard
 
@@ -570,20 +575,22 @@ All product images are URL references, not uploaded files. No file upload endpoi
 |----------|-------|-------|
 | Authentication | 9/10 | Firebase handles core auth; missing token revocation on logout |
 | Authorization | 8/10 | Admin + owner checks in place; no fine-grained RBAC |
-| Input Validation | 8/10 | Validated + allowlisted; no depth limit on JSON |
-| API Security | 7/10 | Most BOLA/BFLA fixed; client-side price trust is weak |
+| Input Validation | 8/10 | Validated + allowlisted + wired into routes; no depth limit on JSON |
+| API Security | 8/10 | BOLA/BFLA fixed; only client-side price trust remains weak |
 | XSS Prevention | 9/10 | React auto-escapes + CSP + email sanitizer |
 | Rate Limiting | 8/10 | Global + auth limits; no per-endpoint tuning |
 | Session Management | 6/10 | Firebase handles; no revocation, no refresh rotation |
 | MongoDB Security | 6/10 | No injection vectors; Atlas IP whitelist open |
 | Email Security | 6/10 | HTML sanitized; no SPF/DMARC verification |
+| HTTP Security | 9/10 | Helmet full stack (HSTS, CSP, X-Frame, X-Content-Type, Referrer-Policy) |
+| Seller PII Protection | 10/10 | Fully filtered from public API |
 | Infrastructure | 5/10 | Render manages most; no port scan, no SSL test run |
 | Cloud Security | 5/10 | Atlas IP open, no audit logs, no VPC |
 | Logging & Monitoring | 4/10 | Basic request logging; no admin audit trail |
 | Dependency Security | 4/10 | npm audit shows 6 vulns; no Dependabot/Snyk |
 | Privacy & Compliance | 5/10 | Consent banner + policies present; no data export/delete |
 | Business Logic | 5/10 | Most flow attacks blocked; no idempotency, no stock check |
-| **Overall** | **6.3/10** | **Strong app-level security; operational gaps remain** |
+| **Overall** | **6.6/10** | **Good app-level security; operational and business-logic gaps remain** |
 
 ## 14. Attack Scenarios — Additional Coverage
 
