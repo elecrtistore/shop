@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ShoppingCart, User, Menu, X, ChevronDown } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, ChevronDown, UserCircle } from 'lucide-react';
 import api from '../services/api';
+import { updateProfile } from 'firebase/auth';
+import { auth } from '../firebase';
 
 interface SiteContent {
   page: string; title: string; subtitle: string; body: string;
@@ -19,6 +21,8 @@ function Layout({ children }: { children: React.ReactNode }) {
   const [logoError, setLogoError] = useState(false);
   const [footerSections, setFooterSections] = useState<{ heading: string; content: string }[]>([]);
   const [footerMeta, setFooterMeta] = useState<Record<string, string>>({});
+  const [showNamePrompt, setShowNamePrompt] = useState(false);
+  const [newName, setNewName] = useState('');
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -35,6 +39,24 @@ function Layout({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => { setOpen(false); }, [location]);
+
+  useEffect(() => {
+    if (user && user.displayName && user.displayName.includes('@')) {
+      setShowNamePrompt(true);
+    }
+  }, [user]);
+
+  const handleSetName = async () => {
+    const name = newName.trim();
+    if (!name || !auth.currentUser) return;
+    try {
+      await updateProfile(auth.currentUser, { displayName: name });
+      await api.put('/auth/profile', { displayName: name });
+      setShowNamePrompt(false);
+      setNewName('');
+      Object.assign(user!, { displayName: name });
+    } catch { /* ignore */ }
+  };
 
   const isHome = location.pathname === '/' || location.pathname === '/shop';
   const transparent = isHome && !scrolled;
@@ -142,6 +164,32 @@ function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </footer>
+      {showNamePrompt && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-soft text-center space-y-5">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+              <UserCircle size={24} className="text-primary" />
+            </div>
+            <h2 className="text-xl font-bold text-charcoal">Set your display name</h2>
+            <p className="text-sm text-soft">Choose a name to appear in the navbar instead of your email.</p>
+            <input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Your name"
+              className="w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm text-charcoal outline-none focus:border-primary transition"
+              onKeyDown={(e) => e.key === 'Enter' && handleSetName()}
+              autoFocus
+            />
+            <button
+              onClick={handleSetName}
+              disabled={!newName.trim()}
+              className="w-full rounded-full bg-primary py-3 text-sm font-semibold text-white hover:bg-primary-hover transition disabled:opacity-50"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
