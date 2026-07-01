@@ -11,6 +11,8 @@ import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import MyInquiriesPage from './pages/MyInquiriesPage';
 import Layout from './components/Layout';
@@ -46,6 +48,8 @@ function App() {
           <Route path="/admin" element={<RoleGuard allowed={['Admin']}><AdminDashboardPage /></RoleGuard>} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contacts" element={<ContactPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
         </Routes>
       </Layout>
     </div>

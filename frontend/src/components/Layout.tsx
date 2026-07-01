@@ -5,6 +5,7 @@ import { ShoppingCart, User, Menu, X, ChevronDown, UserCircle } from 'lucide-rea
 import api from '../services/api';
 import { updateProfile } from 'firebase/auth';
 import { auth } from '../firebase';
+import CookieConsent from './CookieConsent';
 
 interface SiteContent {
   page: string; title: string; subtitle: string; body: string;
@@ -160,10 +161,14 @@ function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-soft">
             <p>&copy; 2026 {shopName}. All rights reserved.</p>
-            <p>Built for direct buyer-seller connections.</p>
+            <div className="flex gap-4">
+              <Link to="/privacy" className="hover:text-primary transition">Privacy Policy</Link>
+              <Link to="/terms" className="hover:text-primary transition">Terms of Service</Link>
+            </div>
           </div>
         </div>
       </footer>
+      <CookieConsent />
       {showNamePrompt && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-soft text-center space-y-5">
