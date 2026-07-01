@@ -13,8 +13,8 @@ const defaults: SiteContent = {
   subtitle: 'Reach out to discuss inquiries, pricing, or pickup arrangements.',
   body: '',
   sections: [
-    { heading: 'Phone', content: '0705980668' },
-    { heading: 'WhatsApp', content: '0705980668' },
+    { heading: 'Phone', content: '0708309429' },
+    { heading: 'WhatsApp', content: '0708309429' },
     { heading: 'Email', content: 'electristore@gmail.com' }
   ]
 };

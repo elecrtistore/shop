@@ -156,8 +156,8 @@ function AdminDashboardPage() {
         stock: stockValue,
         images,
         sellerName: user?.displayName || 'ElectriShop Owner',
-        sellerPhone: '0705980668',
-        sellerWhatsapp: '0705980668',
+        sellerPhone: '0708309429',
+        sellerWhatsapp: '0708309429',
         featured: false,
         specifications: {},
       });
