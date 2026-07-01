@@ -7,7 +7,7 @@ const router = Router();
 
 router.get('/', productController.getProducts);
 router.get('/:id', productController.getProductById);
-router.post('/', validateFirebaseToken, adminGuard, productController.createProduct);
+router.post('/', validateFirebaseToken, adminGuard, productController.validateProduct, productController.createProduct);
 router.put('/:id', validateFirebaseToken, adminGuard, productController.updateProduct);
 router.delete('/:id', validateFirebaseToken, adminGuard, productController.deleteProduct);
 

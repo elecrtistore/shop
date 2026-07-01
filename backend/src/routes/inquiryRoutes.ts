@@ -5,7 +5,7 @@ import { adminGuard } from '../middleware/adminGuard';
 
 const router = Router();
 
-router.post('/', inquiryController.createInquiry);
+router.post('/', inquiryController.validateInquiry, inquiryController.createInquiry);
 router.get('/', validateFirebaseToken, adminGuard, inquiryController.getInquiries);
 router.get('/my', validateFirebaseToken, inquiryController.getMyInquiries);
 router.get('/:id', validateFirebaseToken, inquiryController.getInquiryById);

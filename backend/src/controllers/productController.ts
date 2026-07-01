@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import Product from '../models/Product';
 
 const ALLOWED_FIELDS = ['name', 'description', 'images', 'brand', 'category', 'price', 'discount', 'stock', 'sellerName', 'sellerPhone', 'sellerWhatsapp', 'featured', 'specifications'];
+const SENSITIVE_FIELDS = ['sellerPhone', 'sellerWhatsapp'];
 
 function pickAllowed(body: any) {
   const result: any = {};
@@ -22,15 +23,24 @@ export const validateProduct = [
   body('images.*').isString().isURL().withMessage('Each image must be a valid URL'),
 ];
 
+function sanitizeProduct(doc: any) {
+  if (!doc) return doc;
+  const obj = doc.toObject ? doc.toObject() : { ...doc };
+  for (const field of SENSITIVE_FIELDS) {
+    delete obj[field];
+  }
+  return obj;
+}
+
 export async function getProducts(req: Request, res: Response) {
   const products = await Product.find().sort({ createdAt: -1 });
-  res.json(products);
+  res.json(products.map(sanitizeProduct));
 }
 
 export async function getProductById(req: Request, res: Response) {
   const product = await Product.findById(req.params.id);
   if (!product) return res.status(404).json({ message: 'Product not found' });
-  res.json(product);
+  res.json(sanitizeProduct(product));
 }
 
 export async function createProduct(req: Request, res: Response) {

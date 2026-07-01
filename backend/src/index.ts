@@ -49,18 +49,17 @@ app.use(cors({
   credentials: true
 }));
 app.options('*', cors());
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", 'https://apis.google.com'],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
-      connectSrc: ["'self'", 'https://electrishop-80dd6.firebaseio.com', 'https://identitytoolkit.googleapis.com'],
-      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      objectSrc: ["'none'"],
-      frameSrc: ["'none'"],
-    }
+app.use(helmet());
+app.use(helmet.contentSecurityPolicy({
+  directives: {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", "'unsafe-inline'", 'https://apis.google.com'],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    imgSrc: ["'self'", 'data:', 'https:'],
+    connectSrc: ["'self'", 'https://electrishop-80dd6.firebaseio.com', 'https://identitytoolkit.googleapis.com'],
+    fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+    objectSrc: ["'none'"],
+    frameSrc: ["'none'"],
   }
 }));
 app.use(express.json({ limit: '100kb' }));
