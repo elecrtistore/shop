@@ -21,6 +21,11 @@ export async function fetchInquiries() {
   return response.data;
 }
 
+export async function fetchMyInquiries() {
+  const response = await api.get<Inquiry[]>('/inquiries/my');
+  return response.data;
+}
+
 export async function updateInquiryStatus(id: string, status: string) {
   const response = await api.put<Inquiry>(`/inquiries/${id}/status`, { status });
   return response.data;

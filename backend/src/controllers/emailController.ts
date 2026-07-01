@@ -1,6 +1,7 @@
 import Subscriber from '../models/Subscriber';
 import Product from '../models/Product';
 import nodemailer from 'nodemailer';
+import xss from 'xss';
 
 function getTransporter() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM } = process.env;
@@ -15,13 +16,21 @@ function getTransporter() {
   return null;
 }
 
+function sanitize(str: string): string {
+  return xss(str, {
+    whiteList: {},
+    stripIgnoreTag: true,
+    stripIgnoreTagBody: ['script', 'style', 'iframe', 'object', 'embed'],
+  });
+}
+
 function buildTemplate(template: string, data: any): string {
   const productCard = (p: any) => `
     <div style="border:1px solid #e5e7eb;border-radius:16px;padding:16px;margin-bottom:16px;background:#fff">
-      <img src="${p.images?.[0] || ''}" alt="${p.name}" style="width:100%;height:180px;object-fit:contain;border-radius:12px;background:#f8fafc;margin-bottom:12px" />
-      <h3 style="margin:0 0 4px;font-size:16px;font-weight:600;color:#111827">${p.name}</h3>
-      <p style="margin:0 0 8px;font-size:13px;color:#6b7280">${p.brand || ''}</p>
-      ${p.discount ? `<p style="margin:0 0 4px;font-size:18px;font-weight:700;color:#111827">KSh ${Math.round(p.price * (1 - p.discount / 100)).toLocaleString()}</p><p style="margin:0;font-size:13px;color:#6b7280"><del>KSh ${p.price.toLocaleString()}</del> <span style="color:#059669;font-weight:600">${p.discount}% OFF</span></p>` : `<p style="margin:0;font-size:18px;font-weight:700;color:#111827">KSh ${p.price.toLocaleString()}</p>`}
+      <img src="${sanitize(p.images?.[0] || '')}" alt="${sanitize(p.name)}" style="width:100%;height:180px;object-fit:contain;border-radius:12px;background:#f8fafc;margin-bottom:12px" />
+      <h3 style="margin:0 0 4px;font-size:16px;font-weight:600;color:#111827">${sanitize(p.name)}</h3>
+      <p style="margin:0 0 8px;font-size:13px;color:#6b7280">${sanitize(p.brand || '')}</p>
+      ${p.discount ? `<p style="margin:0 0 4px;font-size:18px;font-weight:700;color:#111827">KSh ${Math.round(p.price * (1 - p.discount / 100)).toLocaleString()}</p><p style="margin:0;font-size:13px;color:#6b7280"><del>KSh ${p.price.toLocaleString()}</del> <span style="color:#059669;font-weight:600">${sanitize(String(p.discount))}% OFF</span></p>` : `<p style="margin:0;font-size:18px;font-weight:700;color:#111827">KSh ${p.price.toLocaleString()}</p>`}
       <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/products/${p._id}" style="display:inline-block;margin-top:12px;padding:10px 24px;background:#1E3A5F;color:#fff;border-radius:4px;text-decoration:none;font-size:13px;font-weight:600">View product</a>
     </div>
   `;
@@ -35,6 +44,9 @@ function buildTemplate(template: string, data: any): string {
       <p style="text-align:center;font-size:12px;color:#9ca3af">Unsubscribe anytime by replying to this email.</p>
     </div>
   `;
+
+  const safeBody = sanitize(data.body || '');
+  const safeSubject = sanitize(data.subject || 'News from ALEXTRONICS');
 
   const templates: Record<string, string> = {
     'new-arrival': wrap(`
@@ -53,8 +65,8 @@ function buildTemplate(template: string, data: any): string {
       ${(data.products || []).map(productCard).join('')}
     `),
     'custom': wrap(`
-      <h1 style="font-size:24px;font-weight:700;color:#111827;margin:0 0 8px">${data.subject || 'News from ALEXTRONICS'}</h1>
-      <div style="font-size:14px;color:#6b7280;line-height:1.7">${data.body || ''}</div>
+      <h1 style="font-size:24px;font-weight:700;color:#111827;margin:0 0 8px">${safeSubject}</h1>
+      <div style="font-size:14px;color:#6b7280;line-height:1.7">${safeBody}</div>
       ${(data.products || []).map(productCard).join('')}
     `),
   };
@@ -117,7 +129,7 @@ export async function sendEmail(req: any, res: any) {
 
     const transporter = getTransporter();
     if (!transporter) {
-      console.log('SMTP not configured. Would send:', { to: subscribers.length, template, subject, products: products.length });
+      console.log(`Email would send to ${subscribers.length} subscribers (SMTP not configured)`);
       return res.json({ message: `Email queued for ${subscribers.length} subscribers (SMTP not configured, logged only)`, sent: subscribers.length });
     }
 
@@ -138,6 +150,6 @@ export async function sendEmail(req: any, res: any) {
 
     res.json({ message: `Sent to ${sent} of ${subscribers.length} subscribers`, sent, total: subscribers.length, errors: errors.length ? errors : undefined });
   } catch (err: any) {
-    res.status(500).json({ message: 'Failed to send email', error: err.message });
+    res.status(500).json({ message: 'Failed to send email' });
   }
 }

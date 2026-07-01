@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import http from 'http';
+import rateLimit from 'express-rate-limit';
 import { Server } from 'socket.io';
 import { connectDatabase } from './config/database';
 import productRoutes from './routes/productRoutes';
@@ -22,7 +23,18 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const io = new Server(server, {
+  cors: {
+    origin: [
+      'https://elecrtistore.github.io',
+      'http://127.0.0.1:4173',
+      'http://localhost:4173',
+      'http://127.0.0.1:5000',
+      'http://localhost:5000'
+    ],
+    methods: ['GET', 'POST']
+  }
+});
 
 app.use(cors({
   origin: [
@@ -37,9 +49,40 @@ app.use(cors({
   credentials: true
 }));
 app.options('*', cors());
-app.use(helmet());
-app.use(express.json());
-app.use(morgan('dev'));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://apis.google.com'],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'", 'https://electrishop-80dd6.firebaseio.com', 'https://identitytoolkit.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      objectSrc: ["'none'"],
+      frameSrc: ["'none'"],
+    }
+  }
+}));
+app.use(express.json({ limit: '100kb' }));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later.' }
+});
+app.use('/api/', limiter);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many login attempts, please try again later.' }
+});
+app.use('/api/auth', authLimiter);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 

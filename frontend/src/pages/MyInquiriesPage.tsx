@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Inquiry } from '../types/inquiry';
-import { fetchInquiries, updateInquiryStatus } from '../services/inquiryService';
+import { fetchMyInquiries, updateInquiryStatus } from '../services/inquiryService';
 import { ClipboardList, Package, Clock, CheckCircle } from 'lucide-react';
 
 function MyInquiriesPage() {
@@ -8,7 +8,7 @@ function MyInquiriesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchInquiries().then(setInquiries).catch(console.error).finally(() => setLoading(false));
+    fetchMyInquiries().then(setInquiries).catch(console.error).finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="pt-24 min-h-screen flex items-center justify-center"><div className="animate-pulse text-soft">Loading...</div></div>;

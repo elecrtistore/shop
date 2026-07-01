@@ -1,6 +1,7 @@
 import { Schema, model } from 'mongoose';
 
 const inquirySchema = new Schema({
+  firebaseUID: { type: String, default: '' },
   customer: {
     name: { type: String, required: true },
     phone: { type: String, required: true },
