@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Bolt, Shield, MessageCircle, ChevronRight, Star, ArrowRight, Package } from 'lucide-react';
 import { Product } from '../types/product';
-import { fetchProducts, fetchCategories } from '../services/productService';
+import { fetchProducts } from '../services/productService';
 import api from '../services/api';
 
 interface HeroContent {
@@ -10,25 +10,9 @@ interface HeroContent {
   sections: { heading: string; content: string }[];
 }
 
-interface CategoryItem {
-  _id: string; name: string; icon: string; image: string;
-}
-
-const fallbackCategories: CategoryItem[] = [
-  { _id: '1', name: 'Phones', icon: '📱', image: '' },
-  { _id: '2', name: 'Laptops', icon: '💻', image: '' },
-  { _id: '3', name: 'Audio', icon: '🎧', image: '' },
-  { _id: '4', name: 'Accessories', icon: '⚡', image: '' },
-  { _id: '5', name: 'Tablets', icon: '📲', image: '' },
-  { _id: '6', name: 'Gaming', icon: '🎮', image: '' },
-  { _id: '7', name: 'Cameras', icon: '📷', image: '' },
-  { _id: '8', name: 'TVs', icon: '📺', image: '' }
-];
-
 function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [hero, setHero] = useState<HeroContent>({ title: '', subtitle: '', body: '', sections: [] });
-  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
@@ -37,13 +21,13 @@ function HomePage() {
   useEffect(() => {
     fetchProducts().then(setProducts).catch(() => {});
     api.get('/site/hero').then((r) => { if (r.data.title) setHero(r.data); }).catch(() => {});
-    fetchCategories().then(setCategories).catch(() => {});
   }, []);
 
   const featured = products.filter(p => p.featured).length > 0
     ? products.filter(p => p.featured).slice(0, 6)
     : products.slice(0, 6);
 
+  const productCategories = [...new Set(products.map(p => p.category).filter(Boolean))];
   const brandList = [...new Set(products.map(p => p.brand).filter(Boolean))].slice(0, 8);
   const displayBrands = brandList.length > 0 ? brandList : ['Samsung', 'Apple', 'Sony', 'LG', 'Dell', 'HP', 'Lenovo', 'JBL'];
 
@@ -120,19 +104,14 @@ function HomePage() {
             <h2 className="text-2xl font-bold text-charcoal">Categories</h2>
             <Link to="/shop" className="text-sm font-semibold text-primary hover:text-primary-hover transition">View all</Link>
           </div>
-          <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-none">
-            {(categories.length > 0 ? categories : fallbackCategories).map((cat) => {
-              const name = typeof cat === 'string' ? cat : cat.name;
-              const icon = typeof cat === 'string' ? '📦' : cat.icon;
-              return (
-                <Link key={name} to={`/shop?category=${name}`} className="flex flex-col items-center gap-3 min-w-[100px] group">
-                  <div className="w-16 h-16 rounded-2xl bg-white shadow-card flex items-center justify-center text-2xl group-hover:scale-110 transition-transform group-hover:shadow-soft">
-                    {icon || '📦'}
-                  </div>
-                  <span className="text-sm font-medium text-charcoal text-center">{name}</span>
-                </Link>
-              );
-            })}
+          <div className="flex flex-wrap gap-3">
+            {productCategories.length > 0 ? productCategories.map((cat) => (
+              <Link key={cat} to={`/shop?category=${cat}`} className="rounded-full border border-border bg-white px-5 py-2.5 text-sm font-medium text-charcoal hover:bg-primary hover:text-white hover:border-primary transition">
+                {cat}
+              </Link>
+            )) : (
+              <p className="text-sm text-soft">No categories yet.</p>
+            )}
           </div>
         </div>
       </section>
