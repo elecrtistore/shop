@@ -16,6 +16,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [shopName, setShopName] = useState('ElectriShop');
+  const [logoError, setLogoError] = useState(false);
   const [footerSections, setFooterSections] = useState<{ heading: string; content: string }[]>([]);
   const [footerMeta, setFooterMeta] = useState<Record<string, string>>({});
 
@@ -54,7 +55,11 @@ function Layout({ children }: { children: React.ReactNode }) {
       }`}>
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2">
-            <img src="/logo.png" alt={shopName} className="h-8 w-auto" />
+            {logoError ? (
+              <span className="text-lg font-bold text-primary">{shopName}</span>
+            ) : (
+              <img src="/shop/logo.png" alt={shopName} className="h-8 w-auto" onError={() => setLogoError(true)} />
+            )}
           </Link>
 
           <nav className="hidden md:flex items-center gap-8">

@@ -20,3 +20,8 @@ export async function fetchInquiries() {
   const response = await api.get<Inquiry[]>('/inquiries');
   return response.data;
 }
+
+export async function updateInquiryStatus(id: string, status: string) {
+  const response = await api.put<Inquiry>(`/inquiries/${id}/status`, { status });
+  return response.data;
+}

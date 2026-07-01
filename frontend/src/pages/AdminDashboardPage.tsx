@@ -6,7 +6,7 @@ import { fetchProducts, createProduct, updateProduct, deleteProduct } from '../s
 import { fetchInquiries } from '../services/inquiryService';
 import api from '../services/api';
 import DiscountModal from '../components/DiscountModal';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Send, Trash2 } from 'lucide-react';
 
 interface SiteContent {
   page: string;
@@ -20,6 +20,7 @@ interface SiteContent {
 const adminCards = [
   { id: 'products', title: 'Products', description: 'Manage shop listings and pricing', icon: '📦' },
   { id: 'orders', title: 'Inquiries', description: 'Review incoming customer requests', icon: '✉️' },
+  { id: 'email', title: 'Email & Subscribers', description: 'Manage subscribers and send mass emails', icon: '📧' },
   { id: 'layout', title: 'Page layout', description: 'Rearrange product cards and page sections', icon: '🧩' },
   { id: 'discounts', title: 'Discount builder', description: 'Create a custom price layout with one click', icon: '🏷️' },
   { id: 'site', title: 'Site Content', description: 'Edit any page (Hero, About, Contact, Footer, Settings)', icon: '📝' },
@@ -61,11 +62,19 @@ function AdminDashboardPage() {
   const [sitePage, setSitePage] = useState('hero');
   const [savingSite, setSavingSite] = useState(false);
   const [newPageName, setNewPageName] = useState('');
+  const [subscribers, setSubscribers] = useState<any[]>([]);
+  const [emailTemplate, setEmailTemplate] = useState('custom');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [emailProductIds, setEmailProductIds] = useState<string[]>([]);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailResult, setEmailResult] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProducts().then(setProducts).catch(console.error);
     fetchInquiries().then(setInquiries).catch(console.error);
     api.get<DashboardStats>('/dashboard/stats').then((res) => setStats(res.data)).catch(console.error);
+    api.get('/email/subscribers').then((res) => setSubscribers(res.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -346,6 +355,35 @@ function AdminDashboardPage() {
       setNewPageName('');
     } catch (err) {
       console.error('Failed to create page', err);
+    }
+  }
+
+  async function handleDeleteSubscriber(id: string) {
+    try {
+      await api.delete(`/email/subscribers/${id}`);
+      setSubscribers((prev) => prev.filter((s) => s._id !== id));
+    } catch { console.error('Failed to delete subscriber'); }
+  }
+
+  function toggleProductForEmail(productId: string) {
+    setEmailProductIds((prev) => prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]);
+  }
+
+  async function handleSendEmail() {
+    setSendingEmail(true);
+    setEmailResult(null);
+    try {
+      const res = await api.post('/email/send', {
+        template: emailTemplate,
+        subject: emailSubject,
+        body: emailBody,
+        productIds: emailProductIds,
+      });
+      setEmailResult(res.data.message);
+    } catch (err: any) {
+      setEmailResult(err.response?.data?.message || 'Failed to send email');
+    } finally {
+      setSendingEmail(false);
     }
   }
 
@@ -688,6 +726,80 @@ function AdminDashboardPage() {
             )}
 
             <DiscountModal open={discountModalOpen} initial={10} onClose={() => { setDiscountModalOpen(false); setDiscountTargetId(null); }} onApply={handleApplyDiscount} />
+
+            {activeCard === 'email' && (
+              <div className="space-y-6">
+                <div className="rounded-2xl bg-white border border-border/60 p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold text-charcoal">Subscribers</h2>
+                      <p className="mt-2 text-sm text-slate-600">{subscribers.length} active subscribers</p>
+                    </div>
+                  </div>
+                  {subscribers.length === 0 ? (
+                    <p className="mt-6 text-sm text-slate-500">No subscribers yet.</p>
+                  ) : (
+                    <div className="mt-6 space-y-2">
+                      {subscribers.map((sub) => (
+                        <div key={sub._id} className="flex items-center justify-between rounded-xl border border-border bg-slate-50 px-4 py-3">
+                          <div>
+                            <p className="text-sm font-medium text-charcoal">{sub.email}</p>
+                            {sub.name && <p className="text-xs text-soft">{sub.name}</p>}
+                          </div>
+                          <button onClick={() => handleDeleteSubscriber(sub._id)} className="rounded-full p-2 text-soft hover:text-rose-600 hover:bg-rose-50 transition">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl bg-white border border-border/60 p-6">
+                  <h2 className="text-xl font-semibold text-charcoal">Send Mass Email</h2>
+                  <p className="mt-2 text-sm text-slate-600">Compose and send to all active subscribers.</p>
+                  <div className="mt-6 space-y-5">
+                    <label className="block">
+                      <span className="text-sm font-medium text-slate-700">Template</span>
+                      <select value={emailTemplate} onChange={(e) => setEmailTemplate(e.target.value)} className="mt-2 w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm text-charcoal outline-none focus:border-primary transition">
+                        <option value="custom">Custom</option>
+                        <option value="new-arrival">New Arrivals</option>
+                        <option value="discount">Discount / Price Drop</option>
+                        <option value="product-spotlight">Product Spotlight</option>
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-slate-700">Subject</span>
+                      <input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} className="mt-2 w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm text-charcoal outline-none focus:border-primary transition" />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-medium text-slate-700">Body</span>
+                      <textarea value={emailBody} onChange={(e) => setEmailBody(e.target.value)} rows={4} className="mt-2 w-full rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm text-charcoal outline-none focus:border-primary transition" />
+                    </label>
+                    <div>
+                      <span className="text-sm font-medium text-slate-700">Include products (optional)</span>
+                      <div className="mt-3 max-h-48 overflow-y-auto space-y-2">
+                        {products.map((p) => (
+                          <label key={p._id} className="flex items-center gap-3 rounded-lg border border-border bg-slate-50 px-3 py-2 cursor-pointer hover:bg-slate-100 transition">
+                            <input type="checkbox" checked={emailProductIds.includes(p._id)} onChange={() => toggleProductForEmail(p._id)} className="rounded accent-primary" />
+                            <img src={p.images[0]} alt="" className="h-8 w-8 rounded object-contain bg-white" />
+                            <span className="text-sm text-charcoal flex-1">{p.name}</span>
+                            <span className="text-xs text-soft">KSh {p.price.toLocaleString()}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    {emailResult && (
+                      <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">{emailResult}</div>
+                    )}
+                    <button onClick={handleSendEmail} disabled={sendingEmail} className="w-full rounded-full bg-primary px-6 py-4 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:opacity-50 flex items-center justify-center gap-2">
+                      <Send size={16} />
+                      {sendingEmail ? 'Sending...' : `Send to ${subscribers.length} subscribers`}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {activeCard === 'layout' && (
               <div className="rounded-2xl bg-white border border-border/60 p-6">

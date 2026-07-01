@@ -14,12 +14,13 @@ const categoryIcons: Record<string, string> = {
   Phones: '📱', Laptops: '💻', Audio: '🎧', Accessories: '⚡', Tablets: '📲', Gaming: '🎮', Cameras: '📷', TVs: '📺'
 };
 
-const brands = ['Samsung', 'Apple', 'Sony', 'LG', 'Dell', 'HP', 'Lenovo', 'JBL'];
-
 function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [hero, setHero] = useState<HeroContent>({ title: '', subtitle: '', body: '', sections: [] });
   const [categories, setCategories] = useState<string[]>([]);
+  const [email, setEmail] = useState('');
+  const [subscribed, setSubscribed] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
 
   useEffect(() => {
     fetchProducts().then(setProducts).catch(() => {});
@@ -31,10 +32,25 @@ function HomePage() {
     ? products.filter(p => p.featured).slice(0, 6)
     : products.slice(0, 6);
 
+  const brandList = [...new Set(products.map(p => p.brand).filter(Boolean))].slice(0, 8);
+  const displayBrands = brandList.length > 0 ? brandList : ['Samsung', 'Apple', 'Sony', 'LG', 'Dell', 'HP', 'Lenovo', 'JBL'];
+
+  const handleSubscribe = async () => {
+    if (!email || subscribing) return;
+    setSubscribing(true);
+    try {
+      const res = await api.post('/email/subscribe', { email });
+      setSubscribed(true);
+      setEmail('');
+    } catch { /* ignore */ } finally {
+      setSubscribing(false);
+    }
+  };
+
   return (
     <div>
       {/* ─── HERO ─── */}
-      <section className="relative min-h-[90vh] flex items-center bg-gradient-to-br from-orange-50 via-white to-amber-50 overflow-hidden">
+      <section className="relative min-h-[70vh] lg:min-h-[90vh] flex items-center bg-gradient-to-br from-orange-50 via-white to-amber-50 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,#F97316_0%,transparent_50%)] opacity-10" />
         <div className="relative mx-auto max-w-7xl px-6 pt-24 pb-16 w-full">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -154,7 +170,7 @@ function HomePage() {
         <div className="mx-auto max-w-7xl px-6">
           <h2 className="text-2xl font-bold text-charcoal text-center mb-10">Top Brands</h2>
           <div className="flex flex-wrap justify-center gap-8 md:gap-16">
-            {brands.map((brand) => (
+            {displayBrands.map((brand) => (
               <div key={brand} className="text-lg font-bold text-soft hover:text-primary transition-colors cursor-pointer">
                 {brand}
               </div>
@@ -210,12 +226,16 @@ function HomePage() {
         <div className="mx-auto max-w-2xl px-6 text-center space-y-6">
           <h2 className="text-2xl font-bold text-charcoal">Stay in the Loop</h2>
           <p className="text-sm text-soft">Get notified about new arrivals, exclusive deals, and price drops.</p>
-          <div className="flex gap-3 max-w-md mx-auto">
-            <input type="email" placeholder="Enter your email" className="flex-1 rounded-full border border-border bg-white px-5 py-3 text-sm text-charcoal outline-none focus:border-primary transition" />
-            <button className="rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-primary-hover transition whitespace-nowrap">
-              Subscribe
-            </button>
-          </div>
+          {subscribed ? (
+            <p className="text-sm font-semibold text-emerald-600">You're subscribed! Check your inbox for updates.</p>
+          ) : (
+            <div className="flex gap-3 max-w-md mx-auto">
+              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Enter your email" className="flex-1 rounded-full border border-border bg-white px-5 py-3 text-sm text-charcoal outline-none focus:border-primary transition" />
+              <button onClick={handleSubscribe} disabled={subscribing} className="rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white hover:bg-primary-hover transition whitespace-nowrap disabled:opacity-50">
+                {subscribing ? '...' : 'Subscribe'}
+              </button>
+            </div>
+          )}
         </div>
       </section>
     </div>

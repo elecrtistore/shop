@@ -12,6 +12,7 @@ import inquiryRoutes from './routes/inquiryRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import authRoutes from './routes/authRoutes';
 import siteRoutes from './routes/siteRoutes';
+import emailRoutes from './routes/emailRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import * as admin from 'firebase-admin';
 import fs from 'fs';
@@ -106,6 +107,7 @@ app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/site', siteRoutes);
+app.use('/api/email', emailRoutes);
 app.use(errorHandler);
 
 io.on('connection', (socket) => {

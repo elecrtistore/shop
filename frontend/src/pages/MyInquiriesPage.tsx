@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Inquiry } from '../types/inquiry';
-import { fetchInquiries } from '../services/inquiryService';
-import { ClipboardList, Package, Clock } from 'lucide-react';
+import { fetchInquiries, updateInquiryStatus } from '../services/inquiryService';
+import { ClipboardList, Package, Clock, CheckCircle } from 'lucide-react';
 
 function MyInquiriesPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
@@ -35,7 +35,20 @@ function MyInquiriesPage() {
                     <Package size={18} className="text-primary" />
                     <span className="text-sm font-mono text-soft">{inquiry._id.slice(-8)}</span>
                   </div>
-                  <span className="rounded-full bg-slate-100 px-4 py-1.5 text-xs font-semibold text-charcoal">{inquiry.status}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-slate-100 px-4 py-1.5 text-xs font-semibold text-charcoal">{inquiry.status}</span>
+                    {inquiry.status !== 'Sold' && inquiry.status !== 'Cancelled' && (
+                      <button
+                        onClick={async () => {
+                          const updated = await updateInquiryStatus(inquiry._id, 'Sold');
+                          setInquiries((prev) => prev.map((i) => (i._id === inquiry._id ? updated : i)));
+                        }}
+                        className="rounded-full bg-emerald-50 px-4 py-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-100 transition flex items-center gap-1"
+                      >
+                        <CheckCircle size={12} /> Order met
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="grid sm:grid-cols-3 gap-4 text-sm">
                   <div>
